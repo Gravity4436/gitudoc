@@ -1,2 +1,21 @@
-*.doc
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+wg-frontend/dist/
+
+# Mac
 .DS_Store
+
+# Project specific
+projects.json
+debug_init.py
+verify_init.py

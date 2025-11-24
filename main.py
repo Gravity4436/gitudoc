@@ -7,6 +7,9 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 # Import our refactored engine
 import wg
 
@@ -20,6 +23,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Static Files Configuration ---
+# Mount the frontend 'dist' directory
+# Ensure 'wg-frontend/dist' exists (run 'npm run build' first)
+DIST_DIR = Path("wg-frontend/dist")
+if DIST_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=DIST_DIR / "assets"), name="assets")
+    
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(DIST_DIR / "index.html")
+else:
+    print("Warning: Frontend dist directory not found. Run 'npm run build' in wg-frontend.")
 
 PROJECTS_FILE = Path("projects.json")
 

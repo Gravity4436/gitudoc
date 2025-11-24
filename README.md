@@ -8,7 +8,7 @@
 
 ## 🚀 第一步：环境准备
 
-在使用之前，你需要确保电脑上安装了以下 4 个基础软件。别担心，只需要安装一次。
+在使用之前，你需要确保电脑上安装了以下 3 个基础软件。别担心，只需要安装一次。
 
 ### 1. 安装 Git (版本控制核心)
 *   **Windows**: 下载 [Git for Windows](https://git-scm.com/download/win) 并安装。一路点击“下一步”即可。
@@ -19,69 +19,36 @@ GituDoc 需要它来“看懂”你的 Word 文档内容。
 *   **下载地址**: [Pandoc 安装包](https://github.com/jgm/pandoc/releases/latest)
 *   下载对应系统的安装包（Windows 是 `.msi`，Mac 是 `.pkg`），双击安装。
 
-### 3. 安装 Python (后端运行环境)
+### 3. 安装 Python (运行环境)
 *   **下载地址**: [Python 官网](https://www.python.org/downloads/)
 *   **注意**: 安装时务必勾选 **"Add Python to PATH"** (将 Python 添加到环境变量)。
 
-### 4. 安装 Node.js (前端运行环境)
-*   **下载地址**: [Node.js 官网](https://nodejs.org/)
-*   下载 "LTS" (长期支持) 版本并安装。
-
 ---
 
-## 🛠️ 第二步：安装 GituDoc
+## 🛠️ 第二步：安装与启动
 
 1.  **下载本项目**: 点击右上角的 "Code" -> "Download ZIP"，解压到你喜欢的文件夹（例如桌面）。
 2.  **打开终端/命令行**:
     *   **Windows**: 在解压后的文件夹内，右键点击空白处，选择 "Open in Terminal" 或 "Git Bash Here"。
     *   **Mac**: 打开“终端”，输入 `cd ` (注意有个空格)，然后把解压后的文件夹拖进终端窗口，按回车。
 
-### 1. 配置后端 (Backend)
-在终端中依次输入以下命令（每行输完按回车）：
+### 1. 安装依赖 (仅需一次)
+在终端中输入以下命令并回车：
 
 ```bash
-# 创建虚拟环境 (可选，但推荐)
-python3 -m venv venv
-# 激活虚拟环境 (Mac/Linux)
-source venv/bin/activate
-# 激活虚拟环境 (Windows)
-.\venv\Scripts\activate
-
-# 安装依赖库
 pip install fastapi uvicorn python-multipart
 ```
 
-### 2. 配置前端 (Frontend)
-打开一个新的终端窗口（同样进入项目文件夹），然后进入前端目录：
+### 2. 一键启动 🚀
+在终端中输入：
 
 ```bash
-cd wg-frontend
-# 安装依赖
-npm install
+python start.py
 ```
 
----
+**系统会自动打开浏览器访问 GituDoc，您可以直接开始使用了！**
 
-## ▶️ 第三步：启动软件
-
-每次使用时，你需要分别启动“后端”和“前端”。
-
-### 1. 启动后端
-在第一个终端窗口（项目根目录）输入：
-```bash
-# 确保虚拟环境已激活 (前面有 (venv) 字样)
-python main.py
-```
-*看到 `Application startup complete` 说明启动成功。*
-
-### 2. 启动前端
-在第二个终端窗口（`wg-frontend` 目录）输入：
-```bash
-npm run dev
-```
-*看到 `Local: http://localhost:5173/` 说明启动成功。*
-
-👉 **现在，打开浏览器，访问 [http://localhost:5173](http://localhost:5173) 即可开始使用！**
+*(以后每次使用，只需要运行 `python start.py` 这一条命令即可)*
 
 ---
 
