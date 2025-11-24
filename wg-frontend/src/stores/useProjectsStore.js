@@ -11,6 +11,7 @@ export const useProjectsStore = defineStore('projects', () => {
     const activeProject = ref(null); // Currently selected project path
 
     const changedFiles = ref([]); // List of changed files in active project
+    const allFiles = ref([]); // List of all .docx files
     const selectedFile = ref(null); // File selected for diff view
     const stagedFiles = ref([]);   // Files selected for commit (currently we stage all or specific, let's keep it simple)
 
@@ -76,6 +77,11 @@ export const useProjectsStore = defineStore('projects', () => {
         stopPollingStatus();
     }
 
+    async function selectFile(path) {
+        selectedFile.value = path;
+        await fetchLog();
+    }
+
     // --- Polling Actions ---
     let pollingInterval = null;
 
@@ -91,12 +97,42 @@ export const useProjectsStore = defineStore('projects', () => {
         }
     }
 
+    async function fetchFiles() {
+        if (!activeProject.value) return;
+        try {
+            const res = await apiClient.get('/files', {
+                params: { project_path: activeProject.value }
+            });
+            allFiles.value = res.data;
+        } catch (error) {
+            console.error("Failed to fetch files:", error);
+        }
+    }
+
     async function fetchLog() {
         if (!activeProject.value) return;
         try {
-            const res = await apiClient.get('/log', {
-                params: { project_path: activeProject.value }
-            });
+            const params = { project_path: activeProject.value };
+            // If a file is selected, filter logs for that file
+            if (selectedFile.value) {
+                params.files = [selectedFile.value];
+            }
+
+            // Note: We need to pass 'files' as a list in query params
+            // axios handles array params by default as files[]=a&files[]=b
+            // FastAPI expects ?files=a&files=b
+            // We might need to use URLSearchParams or custom serializer if axios default doesn't match
+            // But let's try simple object first, axios usually does a good job.
+            // Actually, for GET with array, axios default is 'files[]'. FastAPI wants 'files'.
+            // Let's use URLSearchParams to be safe.
+
+            const queryParams = new URLSearchParams();
+            queryParams.append('project_path', activeProject.value);
+            if (selectedFile.value) {
+                queryParams.append('files', selectedFile.value);
+            }
+
+            const res = await apiClient.get('/log', { params: queryParams });
             commits.value = res.data;
         } catch (error) {
             console.error("Failed to fetch log:", error);
@@ -121,11 +157,26 @@ export const useProjectsStore = defineStore('projects', () => {
         await fetchLog();
     }
 
+    async function restoreFile(commitId, fileName) {
+        if (!activeProject.value) return;
+        await apiClient.post('/restore', {
+            commit_id: commitId,
+            file_name: fileName
+        }, {
+            params: { project_path: activeProject.value }
+        });
+        // No need to fetch status immediately as it creates a new file, 
+        // but good practice to refresh
+        await fetchStatus();
+    }
+
     function startPollingStatus() {
         if (pollingInterval) clearInterval(pollingInterval);
         fetchStatus(); // Immediate fetch
+        fetchFiles(); // Fetch all files
         pollingInterval = setInterval(() => {
             fetchStatus();
+            fetchFiles(); // Keep file list updated (in case new files are added)
             fetchLog(); // Also poll logs to keep history updated
         }, 2000);
     }
@@ -135,9 +186,9 @@ export const useProjectsStore = defineStore('projects', () => {
     }
 
     return {
-        projects, activeProject, changedFiles, selectedFile, stagedFiles, commits,
+        projects, activeProject, changedFiles, allFiles, selectedFile, stagedFiles, commits,
         hasActiveProject,
-        fetchProjects, addProject, removeProject, selectProject, deselectProject, fetchStatus, fetchLog,
-        resetToCommit, revertCommit
+        fetchProjects, addProject, removeProject, selectProject, deselectProject, fetchStatus, fetchFiles, fetchLog, selectFile,
+        resetToCommit, revertCommit, restoreFile
     };
 });

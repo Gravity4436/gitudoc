@@ -12,13 +12,30 @@
             <span class="commit-message">{{ commit.message }}</span>
             <span class="commit-date">{{ commit.date }}</span>
           </div>
+          
+          <!-- Modified Files Hint -->
+          <div v-if="commit.files && commit.files.length > 0" class="commit-files">
+            <span class="file-label">Modified:</span>
+            <span v-for="(file, index) in commit.files" :key="index" class="file-tag">
+              {{ file }}
+            </span>
+          </div>
+
           <div class="commit-meta">
             <span class="commit-author">👤 {{ commit.author }}</span>
             <span class="commit-id">#{{ commit.id.substring(0, 7) }}</span>
           </div>
           
           <div class="commit-actions">
-            <button @click="handleRevert(commit.id)" class="action-btn revert" title="Revert">↩ Revert</button>
+            <button 
+              v-if="store.selectedFile" 
+              @click="handleRestore(commit.id)" 
+              class="action-btn restore" 
+              title="Save this version as a new file"
+            >
+              📄 Restore Copy
+            </button>
+            <button @click="handleRevert(commit.id)" class="action-btn revert" title="Revert (Advanced)">↩ Revert (Dev)</button>
             <button @click="handleReset(commit.id)" class="action-btn reset" title="Reset">⏮ Reset</button>
           </div>
         </div>
@@ -32,8 +49,20 @@ import { useProjectsStore } from '@/stores/useProjectsStore';
 
 const store = useProjectsStore();
 
+async function handleRestore(id) {
+  if (!store.selectedFile) return;
+  if (confirm(`Create a copy of '${store.selectedFile}' from this version?`)) {
+    try {
+      await store.restoreFile(id, store.selectedFile);
+      alert('Success! A copy has been created.');
+    } catch (e) {
+      alert('Restore failed: ' + e.message);
+    }
+  }
+}
+
 async function handleRevert(id) {
-  if (confirm('Are you sure you want to revert this commit?')) {
+  if (confirm('Advanced: Revert creates a new commit that undoes changes. For .docx files, this often fails due to conflicts. Are you sure?')) {
     try {
       await store.revertCommit(id);
     } catch (e) {
@@ -148,6 +177,27 @@ h3 {
   margin-bottom: 0.8rem;
 }
 
+.commit-files {
+  font-size: 0.75rem;
+  color: #666;
+  margin-bottom: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.file-label {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.file-tag {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
 .commit-id {
   font-family: monospace;
   background: rgba(255,255,255,0.5);
@@ -168,6 +218,17 @@ h3 {
   border: none;
   background: rgba(255,255,255,0.6);
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.action-btn.restore {
+  color: #fff;
+  background: #52c41a; /* Green */
+}
+
+.action-btn.restore:hover {
+  background: #73d13d;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(82, 196, 26, 0.3);
 }
 
 .action-btn.revert:hover {

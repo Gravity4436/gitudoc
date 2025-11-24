@@ -61,6 +61,7 @@ class LogEntry(BaseModel):
     message: str
     author: str
     date: str
+    files: List[str] = []
 
 # --- Helper Functions ---
 
@@ -136,6 +137,16 @@ async def get_status(project_path: str, files: Optional[List[str]] = Query(None)
         return status_list
     except Exception as e:
         print(f"Error in /api/status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/files", response_model=List[str])
+async def get_files(project_path: str):
+    """Get list of all .docx files in the project."""
+    try:
+        files = await run_in_threadpool(wg.get_docx_files, project_path)
+        return files
+    except Exception as e:
+        print(f"Error in /api/files: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/diff/{file_name}")

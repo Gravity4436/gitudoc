@@ -10,7 +10,7 @@ from pathlib import Path
 # 2. 返回数据而非打印: 供 API 调用
 # 3. 异常处理: 抛出异常而非 sys.exit
 
-def run_command(command, capture_output=False, check=True, shell=False, cwd=None):
+def run_command(command, capture_output=False, check=True, shell=False, cwd=None, **kwargs):
     """(V3.1 修复) 一个通用的、健壮的子进程运行器"""
     try:
         # Pager logic (git log/diff) only applies when running as CLI script and not capturing output
@@ -33,7 +33,8 @@ def run_command(command, capture_output=False, check=True, shell=False, cwd=None
             text=True,
             capture_output=capture_output,
             shell=shell,
-            cwd=cwd
+            cwd=cwd,
+            **kwargs
         )
         return result
         
@@ -244,9 +245,11 @@ def handle_log(project_path, files=None):
 
     # Custom format for parsing
     # %h: short hash, %s: subject, %an: author name, %ad: author date
-    fmt = "%h|%s|%an|%ad"
+    # We use a special delimiter that is unlikely to be in filenames or messages
+    # But wait, --name-only puts files on new lines.
+    fmt = "COMMIT_START|%h|%s|%an|%ad"
     result = run_command(
-        ["git", "log", f"--format={fmt}", "--date=short", "--"] + files_to_log, 
+        ["git", "log", f"--format={fmt}", "--date=short", "--name-only", "--"] + files_to_log, 
         capture_output=True, 
         check=False,
         cwd=project_path
@@ -255,58 +258,82 @@ def handle_log(project_path, files=None):
     logs = []
     if result.stdout:
         lines = result.stdout.strip().split('\n')
+        current_commit = None
+        
         for line in lines:
+            line = line.strip()
             if not line: continue
-            parts = line.split('|')
-            if len(parts) >= 4:
-                logs.append({
-                    "id": parts[0],
-                    "message": parts[1],
-                    "author": parts[2],
-                    "date": parts[3]
-                })
+            
+            if line.startswith("COMMIT_START|"):
+                # Save previous commit if exists
+                if current_commit:
+                    logs.append(current_commit)
+                
+                parts = line.split('|')
+                if len(parts) >= 5:
+                    current_commit = {
+                        "id": parts[1],
+                        "message": parts[2],
+                        "author": parts[3],
+                        "date": parts[4],
+                        "files": []
+                    }
+            else:
+                # It's a filename (if we have a current commit)
+                if current_commit:
+                    current_commit["files"].append(line)
+        
+        # Append the last commit
+        if current_commit:
+            logs.append(current_commit)
+            
     return logs
 
 # --- (V4.0 重大简化) ---
 def handle_restore(project_path, commit_id, docx_file_name):
     """
-    (V4.0 简化)
-    从 Git 历史中恢复一个 100% 保真度的 .docx 文件。
+    (V4.0 简化 -> V5.1 安全优化)
+    从 Git 历史中恢复一个 100% 保真度的 .docx 版本作为新文件。
+    使用 'git show' 而不是 'git checkout'，避免修改工作区状态。
     Returns: Path of restored file (str)
     """
     check_init_status(project_path)
     
     path_obj = Path(project_path)
-    docx_path = path_obj / docx_file_name
     
     if not docx_file_name.endswith(".docx"):
         raise ValueError(f"文件 {docx_file_name} 不是 .docx 文件")
 
-    restored_docx_name = f"{Path(docx_file_name).stem}.{commit_id[:7]}.restored.docx"
-    restored_docx_path = path_obj / restored_docx_name
+    # Create a safe filename for the copy
+    # e.g. "MyDoc.docx" -> "MyDoc_v2(a1b2c3d).docx"
+    short_hash = commit_id[:7]
+    stem = Path(docx_file_name).stem
+    restored_docx_name = f"{stem}_v{short_hash}_copy.docx"
+    
+    # (V5.2) Save to 'Restore Copy' subdirectory
+    restore_dir = path_obj / "Restore Copy"
+    if not restore_dir.exists():
+        restore_dir.mkdir()
+        
+    restored_docx_path = restore_dir / restored_docx_name
 
     try:
-        run_command(["git", "checkout", commit_id, "--", docx_file_name], cwd=project_path)
-        
-        # Rename the checked out file (which overwrote the current one temporarily) to the restored name
-        # Wait, git checkout <commit> -- <file> updates the file in working directory.
-        # We want to keep current file and save restored as new file.
-        # So we rename the checked-out file to restored_name, then checkout HEAD to restore current.
-        
-        if docx_path.exists():
-            docx_path.rename(restored_docx_path)
-        else:
-             # Should not happen if git checkout succeeded
-             raise RuntimeError("Checkout succeeded but file not found.")
+        # Use git show <commit>:<file> to stream content directly to new file
+        # This is much safer than checkout + rename
+        with open(restored_docx_path, "wb") as f:
+            run_command(
+                ["git", "show", f"{commit_id}:{docx_file_name}"], 
+                cwd=project_path, 
+                stdout=f
+            )
         
         return str(restored_docx_path)
         
     except Exception as e:
-        raise RuntimeError(f"恢复过程中发生错误: {e}")
-        
-    finally:
-        # Clean up: restore the original file from HEAD
-        run_command(["git", "checkout", "HEAD", "--", docx_file_name], check=False, cwd=project_path)
+        # Clean up partial file if failed
+        if restored_docx_path.exists():
+            restored_docx_path.unlink()
+        raise RuntimeError(f"恢复副本失败: {e}")
 
 # --- (V5.0 新增) ---
 def handle_reset(project_path, commit_id):

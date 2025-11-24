@@ -23,7 +23,7 @@ import CommitHistory from './CommitHistory.vue';
 <style scoped>
 .dashboard {
   display: grid;
-  grid-template-columns: 300px 1fr 320px;
+  grid-template-columns: 350px 1fr 450px;
   grid-template-rows: minmax(0, 1fr); /* Force row to fit container */
   gap: 20px;
   height: 100%;

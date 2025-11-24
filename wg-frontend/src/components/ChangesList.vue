@@ -1,23 +1,25 @@
 <template>
   <div class="changes-list">
     <h3>文件树（Tree）</h3>
-    <div v-if="store.changedFiles.length === 0" class="no-changes">
+    <div v-if="filesWithStatus.length === 0" class="no-changes">
       <span class="check-icon">✓</span>
-      <p>所有文件都是干净的</p>
+      <p>没有找到 .docx 文件</p>
     </div>
     <ul v-else>
       <li 
-        v-for="file in store.changedFiles" 
+        v-for="file in filesWithStatus" 
         :key="file.path"
         :class="{ active: store.selectedFile === file.path }"
-        @click="store.selectedFile = file.path"
+        @click="store.selectFile(file.path)"
       >
         <span class="file-icon">📄</span>
         <span class="filename">{{ file.path }}</span>
         
         <div class="status-badges">
-           <span class="status" :class="file.status">{{ file.status }}</span>
+           <span v-if="file.status" class="status" :class="file.status">{{ file.status }}</span>
+           <!-- Only show checkbox if file has status (is changed) -->
            <input 
+            v-if="file.status"
             type="checkbox" 
             :value="file.path" 
             v-model="store.stagedFiles"
@@ -32,7 +34,20 @@
 
 <script setup>
 import { useProjectsStore } from '@/stores/useProjectsStore';
+import { computed } from 'vue';
+
 const store = useProjectsStore();
+
+const filesWithStatus = computed(() => {
+  // Map all files to objects with status
+  return store.allFiles.map(filename => {
+    const change = store.changedFiles.find(cf => cf.path === filename);
+    return {
+      path: filename,
+      status: change ? change.status : null
+    };
+  });
+});
 </script>
 
 <style scoped>
