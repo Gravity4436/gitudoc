@@ -1,5 +1,5 @@
 <template>
-  <div class="changes-list">
+  <div class="changes-list" @click="store.selectFile(null)">
     <h3>文件树（Tree）</h3>
     <div v-if="filesWithStatus.length === 0" class="no-changes">
       <span class="check-icon">✓</span>
@@ -10,7 +10,7 @@
         v-for="file in filesWithStatus" 
         :key="file.path"
         :class="{ active: store.selectedFile === file.path }"
-        @click="store.selectFile(file.path)"
+        @click.stop="store.selectFile(file.path)"
       >
         <span class="file-icon">📄</span>
         <span class="filename">{{ file.path }}</span>

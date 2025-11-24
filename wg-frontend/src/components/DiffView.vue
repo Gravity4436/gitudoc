@@ -20,7 +20,11 @@
       <div v-if="loading && !diffData" class="loading-state">Loading diff...</div>
       <div v-else-if="error">{{ error }}</div>
       <div v-else class="diff-container" ref="containerRef">
-        <div class="diff-content">
+        <div v-if="parsedDiff.length === 0" class="no-diff-message">
+          <span class="check-icon">✓</span>
+          <p>当前文件没有检测到更改 (Clean)</p>
+        </div>
+        <div v-else class="diff-content">
           <div 
             v-for="(line, index) in parsedDiff" 
             :key="index"
@@ -286,5 +290,22 @@ h3 {
   padding: 1rem;
   color: #666;
   font-style: italic;
+}
+
+.no-diff-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  padding: 2rem;
+}
+
+.check-icon {
+  font-size: 3rem;
+  color: #10b981;
+  margin-bottom: 0.5rem;
+  filter: drop-shadow(0 4px 6px rgba(16, 185, 129, 0.2));
 }
 </style>
